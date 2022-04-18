@@ -398,7 +398,7 @@ def train_and_validate(
                     loss=[MultichannelMultinomialNLL(
                         train_gen._total_signal_tracks), 
                           CustomMeanSquaredError()], 
-                    loss_weights=model_arch_params['loss_weights'])
+                    loss_weights=model_arch_params['loss_weights'],run_eagerly=True)
     
     # begin time for training
     t1 = time.time()
@@ -430,7 +430,7 @@ def train_and_validate(
     val_losses_lr = []
     
     # track best loss so we can restore weights 
-    best_loss = 1e6
+    best_loss = 1e32
     
     # keep a copy of the best weights
     best_weights = None

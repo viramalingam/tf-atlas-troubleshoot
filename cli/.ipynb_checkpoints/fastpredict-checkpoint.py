@@ -21,7 +21,7 @@ from basepairmodels.cli.metrics import mnll, profile_cross_entropy
 
 from genomicsdlarchsandlosses.bpnet.attribution_prior \
     import AttributionPriorModel
-from genomicsdlarchsandlosses.bpnet.custommodel \
+from basepairmodels.common.custommodel \
     import CustomModel
 from genomicsdlarchsandlosses.bpnet.losses import \
 MultichannelMultinomialNLL, multinomial_nll, CustomMeanSquaredError
@@ -33,6 +33,7 @@ from scipy.stats import pearsonr, spearmanr, multinomial
 from tqdm import tqdm
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import CustomObjectScope
+import pickle
 
 
 def _fix_sum_to_one(probs):
@@ -396,10 +397,21 @@ def predict(args, pred_dir):
         coordinates = batch['coordinates']
         true_profiles = batch['true_profiles']
         true_logcounts = batch['true_logcounts']
+        
+         
 
         # predict on the batch
         predictions = model.predict(batch)
         
+        f = open(f"{pred_dir}/batch.pkl",'wb')
+        pickle.dump(batch, f)
+        f.close()
+        
+        f = open(f"{pred_dir}/predictions.pkl",'wb')
+        pickle.dump(predictions, f)
+        f.close()
+        
+                
         # arrays to hold required values for each batch before we 
         # write to HDF5 file
         pred_profiles = np.zeros(
@@ -445,21 +457,34 @@ def predict(args, pred_dir):
                 _start = args.output_len // 2 - args.output_window_size // 2  
                 _end = _start + args.output_window_size
                 
-                # counts prediction from the count head
-                logcounts_prediction = predictions[1][idx] # this is the sum of both the strands that is predicted
+                # combined counts prediction from the count head
+                logcounts_prediction = predictions[1][idx] # this is the sum of both the strands that is predicted                
 
                 # predicted profile
-                pred_profile_logits = np.transpose(np.reshape(predictions[0],[-1,num_output_tracks,args.output_window_size]),axes=[0,2,1])[idx, :, j]
+                pred_profile_logits = np.transpose(\
+                                                   np.reshape(\
+                                                              predictions[0],\
+                                                              [-1,num_output_tracks,args.output_window_size]\
+                                                             ),axes=[0,2,1]\
+                                                  )[idx, :, j]
                 
-                profile_predictions = (np.exp(pred_profile_logits - logsumexp(pred_profile_logits)) * (np.exp(logcounts_prediction) - 2))
+                profile_predictions = (np.exp(\
+                                              pred_profile_logits - \
+                                              logsumexp(\
+                                                        pred_profile_logits\
+                                                       )) * (np.exp(logcounts_prediction) - 2)\
+                                      )
                                 
                 pred_profiles[cnt_batch_examples, :, j] = profile_predictions[_start:_end] # 2 is the sudo count added during training
                 
                 # counts prediction
-                pred_logcounts[cnt_batch_examples, j] = np.log(np.sum(profile_predictions, axis=1) + 1)
+                pred_logcounts[cnt_batch_examples, j] = np.log(np.sum(profile_predictions) + 1)
+                #pred_logcounts[cnt_batch_examples, j] = np.log(np.exp(predictions[1][idx,j])/2)
+                
             
                 # true profile
-                _true_profiles[cnt_batch_examples, :, j] = true_profiles[idx,_start:_end, j]
+                _true_profiles[cnt_batch_examples, :, j] = \
+                    true_profiles[idx, _start:_end, j]
                 
                 # true logcounts
                 _true_logcounts[cnt_batch_examples, j] = \

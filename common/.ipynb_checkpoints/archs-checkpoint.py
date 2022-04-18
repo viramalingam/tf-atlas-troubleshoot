@@ -454,9 +454,13 @@ def counts_bias_module(counts_head, counts_bias_inputs, tasks_info,
             if num_tasks == 1:
                 name = "logcounts_predictions"
             else:
+            #     name = "logcounts_predictions_{}".format(i)
+            # counts_outputs.append(layers.Dense(
+            #     units=num_task_tracks, 
+            #     name=name)(concat_with_counts_bias_input))
                 name = "logcounts_predictions_{}".format(i)
             counts_outputs.append(layers.Dense(
-                units=1, 
+                units=num_tasks, 
                 name=name)(concat_with_counts_bias_input))
 
     # counts output
@@ -683,8 +687,10 @@ def BPNet(
     # Step 4.1.1 - get total number of output tracks across all tasks
     num_tasks = len(list(tasks.keys()))
     total_tracks = 0
+    tracks_for_each_task = []
     for i in range(num_tasks):
         total_tracks += len(tasks[i]['signal']['source'])
+        tracks_for_each_task.append(total_tracks)
     
     # Step 4.1.2 - conv layer to get pre bias profile prediction
     profile_head_out = profile_head(
@@ -775,7 +781,6 @@ def BPNet(
             kernel_sizes=profile_bias_module_params['kernel_sizes'], 
             name_prefix=name_prefix)
         
-        profile_outputs = tf.transpose(tf.reshape(tf.transpose(profile_outputs,perm=[0,2,1]),[-1,num_tasks,output_profile_len*2]),perm=[0,2,1])
     
         # Step 5.3 - account for counts bias
         logcounts_outputs = counts_bias_module(
@@ -795,8 +800,14 @@ def BPNet(
         
     else:
         # instantiate keras Model with inputs and outputs
-        return CustomModel(num_tasks, loss_weights,
+        # print({'num_tasks':num_tasks,\
+        #        'tracks_for_each_task':tracks_for_each_task,\
+        #        'output_profile_len':output_profile_len,\
+        #        'loss_weights':loss_weights,\
+        #        'inputs':inputs, 'outputs':[profile_outputs, logcounts_outputs]})
+        return CustomModel(num_tasks,tracks_for_each_task,output_profile_len,loss_weights,
             inputs=inputs, outputs=[profile_outputs, logcounts_outputs])
+    
 
 
 def BPNet_ATAC_DNase(tasks, bias_tasks, bpnet_params, bias_bpnet_params, 
@@ -891,8 +902,10 @@ def BPNet_ATAC_DNase(tasks, bias_tasks, bpnet_params, bias_bpnet_params,
     # Step 4.1.1 - get total number of output tracks across all tasks
     num_tasks = len(list(tasks.keys()))
     total_tracks = 0
+    tracks_for_each_task = []
     for i in range(num_tasks):
         total_tracks += len(tasks[i]['signal']['source'])
+        tracks_for_each_task.append(total_tracks)
     
     # Step 4.1.2 - conv layer to get pre bias profile prediction
     profile_head_out = profile_head(
@@ -988,5 +1001,5 @@ def BPNet_ATAC_DNase(tasks, bias_tasks, bpnet_params, bias_bpnet_params,
         
     else:
         # instantiate keras Model with inputs and outputs
-        return CustomModel(total_tracks, loss_weights,
+        return CustomModel(num_tasks,tracks_for_each_task,output_profile_len,loss_weights,
             inputs=inputs, outputs=[profile_outputs, logcounts_outputs])

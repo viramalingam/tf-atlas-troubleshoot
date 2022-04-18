@@ -1169,8 +1169,8 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         # in 'train' and 'val' mode we need outputs as well     
         if self._mode == 'train' or self._mode == 'val':
             outputs = {
-                'profile_predictions': profile_predictions.reshape(-1,self._output_flank * 2 * 2,self._num_tasks),
-                'logcounts_predictions': logsumexp(np.reshape(logcounts_predictions,[-1,self._num_tasks,2]),axis=2)}
+                'profile_predictions': profile_predictions,
+                'logcounts_predictions': logcounts_predictions}
             
             return (inputs, outputs, weights)
 
