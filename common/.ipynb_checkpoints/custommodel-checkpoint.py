@@ -85,7 +85,7 @@ class CustomModel(Model):
         def _multinomial_nll():
             total_mnll_loss = 0
             track_count_cuml = 0
-            for i in range(self.num_tasks*2):
+            for i in range(self.num_tasks):
                 num_of_tracks = self.tracks_for_each_task[i]
                 _y_reshape = tf.reshape(\
                                         _y[:,:,track_count_cuml:(track_count_cuml+num_of_tracks)],\

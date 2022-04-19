@@ -458,28 +458,26 @@ def predict(args, pred_dir):
                 _end = _start + args.output_window_size
                 
                 # combined counts prediction from the count head
-                logcounts_prediction = predictions[1][idx] # this is the sum of both the strands that is predicted                
+                logcounts_prediction = predictions[1][idx] # this is the logsum of both the strands that is predicted                
 
-                # predicted profile
-                pred_profile_logits = np.transpose(\
-                                                   np.reshape(\
-                                                              predictions[0],\
-                                                              [-1,num_output_tracks,args.output_window_size]\
-                                                             ),axes=[0,2,1]\
-                                                  )[idx, :, j]
+                # predicted profile — for now assuming that there are two strands and only one task
+                pred_profile_logits = np.reshape(predictions[0][idx, :, :],[1,args.output_len*2])
                 
                 profile_predictions = (np.exp(\
                                               pred_profile_logits - \
                                               logsumexp(\
                                                         pred_profile_logits\
                                                        )) * (np.exp(logcounts_prediction) - 2)\
-                                      )
+                                      )# 2 is the sudo count added during training - 1 for each strand count
                                 
-                pred_profiles[cnt_batch_examples, :, j] = profile_predictions[_start:_end] # 2 is the sudo count added during training
+                pred_profiles[cnt_batch_examples, :, j] = np.reshape(\
+                                                                     profile_predictions,\
+                                                                     [args.output_len,2]\
+                                                                    )[_start:_end,j] 
                 
                 # counts prediction
                 pred_logcounts[cnt_batch_examples, j] = np.log(np.sum(profile_predictions) + 1)
-                #pred_logcounts[cnt_batch_examples, j] = np.log(np.exp(predictions[1][idx,j])/2)
+                #pred_logcounts[cnt_batch_examples, j] = predictions[1][idx,j]
                 
             
                 # true profile
